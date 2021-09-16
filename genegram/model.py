@@ -12,20 +12,9 @@ from keras.layers import Dropout, Conv2D, Input, Activation, BatchNormalization,
 from keras.models import Model
 from skimage.io import imread
 from tensorflow.keras.layers import Layer
+from tqdm import tqdm
 
-from genegram.shared import ANALYSIS
-
-os.environ["PYTHONHASHSEED"] = "0"
-np.random.seed(42)
-rn.seed(12345)
-session_conf = tf.compat.v1.ConfigProto(
-    intra_op_parallelism_threads=1, inter_op_parallelism_threads=1
-)
-tf.random.set_seed(1234)
-sess = tf.compat.v1.Session(graph=tf.compat.v1.get_default_graph(), config=session_conf)
-K.set_session(sess)
-
-input_shape = (None, None, 1)
+from genegram.shared import ROOT
 
 
 # Data processing functions
@@ -232,7 +221,7 @@ def res_network(inputs, units_num, filters, kernels, activ="relu", bn=False, dr=
 def parallel_res_network(
     blocks_num, units_num, filters, kernels, activ="relu", bn=False, dr=0
 ):
-    inputs = Input(shape=input_shape)
+    inputs = Input(shape=(None, None, 1))
     all_outputs = []
     # construct several resnets of same shape
     for i in range(blocks_num):
@@ -252,6 +241,19 @@ def parallel_res_network(
 
 
 def predict(input_dir: Path, output_dir: Path):
+    # setup environment
+    os.environ["PYTHONHASHSEED"] = "0"
+    np.random.seed(42)
+    rn.seed(12345)
+    session_conf = tf.compat.v1.ConfigProto(
+        intra_op_parallelism_threads=1, inter_op_parallelism_threads=1
+    )
+    tf.random.set_seed(1234)
+    sess = tf.compat.v1.Session(
+        graph=tf.compat.v1.get_default_graph(), config=session_conf
+    )
+    K.set_session(sess)
+
     # load model and predict image for each sample in input_dir
     model = parallel_res_network(
         blocks_num=4,
@@ -262,14 +264,14 @@ def predict(input_dir: Path, output_dir: Path):
         bn=False,
         dr=0.1,
     )
-    model.load_weights(str(ANALYSIS / "weights.h5"))
+    model.load_weights(str(ROOT / "weights.h5"))
 
     # create dir for `output_dir`
     data_dir = Path(output_dir).resolve()
     data_dir.mkdir(parents=True, exist_ok=True)
 
-    files = glob.glob(input_dir + "*.png")
-    for file in files:
+    files = glob.glob(str(input_dir) + "/*.png")
+    for file in tqdm(files, desc="Predicting"):
         img = predict_img(file, model)
         img = binarize_output(img)
         # ...some other post-processing

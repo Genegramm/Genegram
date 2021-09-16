@@ -1,8 +1,11 @@
 import genegram.shared
 from genegram.shared import *
 
-import genegram.parsing
-from genegram.parsing import *
+import genegram.cfpq_pyalgo
+from genegram.cfpq_pyalgo import *
 
-import genegram.analysis
-from genegram.analysis import *
+import genegram.draw
+from genegram.draw import *
+
+import genegram.model
+from genegram.model import *
