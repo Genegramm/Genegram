@@ -22,4 +22,4 @@ Run the `python -m generam` with the arguments.
 Argument | Description
 :--- | :---
 --seq_fasta | Path to the `seq.fasta` file
---predict | Path to the folder where the predictions will be saved
+--out | Path to the folder where the predictions will be saved

@@ -6,12 +6,14 @@ from genegram import seq_fasta_to_pictures, predict
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="Genegram")
-    parser.add_argument("--seq_fasta", required=True, type=str, help="input data path")
     parser.add_argument(
-        "--predict",
+        "--seq_fasta", required=True, type=str, help="Path to the `seq.fasta` file"
+    )
+    parser.add_argument(
+        "--out",
         required=True,
         type=str,
-        help="output data path",
+        help="Path to the folder where the predictions will be saved",
     )
 
     args = parser.parse_args()
