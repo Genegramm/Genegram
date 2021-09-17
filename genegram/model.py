@@ -161,16 +161,16 @@ class WeightedSum(Layer):
         super(WeightedSum, self).__init__()
         w_init = tf.keras.initializers.Ones()
         self.w1 = tf.Variable(
-            initial_value=w_init(shape=(), dtype="float32"), trainable=True
+            initial_value=w_init(shape=(), dtype="float32"), trainable=False
         )
         self.w2 = tf.Variable(
-            initial_value=w_init(shape=(), dtype="float32"), trainable=True
+            initial_value=w_init(shape=(), dtype="float32"), trainable=False
         )
         self.w3 = tf.Variable(
-            initial_value=w_init(shape=(), dtype="float32"), trainable=True
+            initial_value=w_init(shape=(), dtype="float32"), trainable=False
         )
         self.w4 = tf.Variable(
-            initial_value=w_init(shape=(), dtype="float32"), trainable=True
+            initial_value=w_init(shape=(), dtype="float32"), trainable=False
         )
 
     def call(self, input):
