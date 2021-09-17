@@ -1,17 +1,24 @@
-from argparse import ArgumentParser
+from collections import namedtuple
 from pathlib import Path
+from typing import List, Dict
 
 from PIL import Image, ImageDraw
 from cfpq_data import cfg_from_txt
 from tqdm import tqdm
 
-from cfpq_pyalgo import CNF, BooleanMatrixGraph, all_pairs_reachability_matrix
+from genegram.cfpq_pyalgo import CNF, BooleanMatrixGraph, all_pairs_reachability_matrix
+from genegram.shared import ROOT
+
+__all__ = [
+    "seq_fasta_to_pictures",
+]
 
 NUCLEOTIDE_TO_COLOR = {"a": 32, "c": 64, "g": 96, "u": 128}
-ROOT_DIR = Path(__file__).parent.resolve()
+
+Edge = namedtuple("Edge", ["node_from", "label", "node_to"])
 
 
-def seq_fasta_to_graphs(seq_fasta):
+def seq_fasta_to_graphs(seq_fasta: Path) -> Dict[int, List[Edge]]:
     graphs = dict()
     with open(seq_fasta, "r") as fin:
         for line in fin:
@@ -19,24 +26,24 @@ def seq_fasta_to_graphs(seq_fasta):
                 id = line.strip()[1:]
             elif len(id) > 0:
                 graphs[int(id)] = [
-                    (i, c, i + 1) for i, c in enumerate(line.strip().lower())
+                    Edge(i, c, i + 1) for i, c in enumerate(line.strip().lower())
                 ]
     return graphs
 
 
-def seq_fasta_to_pictures(seq_fasta, target_dir):
+def seq_fasta_to_pictures(seq_fasta: Path, target_dir: Path) -> None:
     # create dir for `target_dir`
     data_dir = Path(target_dir).resolve()
     data_dir.mkdir(parents=True, exist_ok=True)
 
     # load grammar
-    path_to_grammar = str(ROOT_DIR / "grammar.txt")
+    path_to_grammar = str(ROOT / "grammar.txt")
     grammar = CNF.from_cfg(cfg_from_txt(path_to_grammar))
 
     # translate `seq_fasta` file to graphs
     graphs = seq_fasta_to_graphs(seq_fasta)
 
-    for rna_id, triples in tqdm(graphs.items()):
+    for rna_id, triples in tqdm(graphs.items(), desc="RNA to PNG"):
         bmg = BooleanMatrixGraph.from_triples(triples)
 
         reachabilities = all_pairs_reachability_matrix(bmg, grammar)
@@ -59,18 +66,3 @@ def seq_fasta_to_pictures(seq_fasta, target_dir):
             im_draw.point(xy=(j - 1, i), fill=NUCLEOTIDE_TO_COLOR[label])
 
             im.save(data_dir / f"{rna_id}.png", "png")
-
-
-if __name__ == "__main__":
-    parser = ArgumentParser(description="seq.fasta to pictures")
-    parser.add_argument("--path", required=True, type=str, help="path to seq.fasta")
-    parser.add_argument(
-        "--target_dir",
-        required=True,
-        type=str,
-        help="path to the folder in which to save the pictures",
-    )
-
-    args = parser.parse_args()
-
-    seq_fasta_to_pictures(args.path, args.target_dir)

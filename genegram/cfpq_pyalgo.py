@@ -5,6 +5,12 @@ from networkx import MultiDiGraph
 from pyformlang.cfg import CFG, Variable, Terminal
 from pygraphblas import Matrix, BOOL
 
+__all__ = [
+    "CNF",
+    "BooleanMatrixGraph",
+    "all_pairs_reachability_matrix",
+]
+
 
 class CNF:
     def __init__(
@@ -106,7 +112,7 @@ def all_pairs_reachability_matrix(graph: BooleanMatrixGraph, grammar: CNF):
         changed = False
         for l, r1, r2 in grammar.double_productions:
             old_nnz = m[l].nvals
-            m[l] += m[r1].mxm(m[r2], semiring=BOOL.LOR_LAND)
+            m[l] += m[r1].mxm(m[r2], semiring=BOOL.ANY_PAIR)
             new_nnz = m[l].nvals
 
             if old_nnz != new_nnz:
