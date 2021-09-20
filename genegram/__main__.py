@@ -22,4 +22,4 @@ if __name__ == "__main__":
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         seq_fasta_to_pictures(seq_fasta, tmp_dir)
-        predict(tmp_dir, args.predict)
+        predict(tmp_dir, args.out)
