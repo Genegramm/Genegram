@@ -12,12 +12,15 @@ Simply clone the repository and run the following commands:
 
 ```bash
 pip install -r requirements.txt
-pip install .
 ```
 
 ## Usage
 
-Run the `python -m generam` with the arguments.
+Run the following command with arguments.
+
+```bash
+python -m genegram
+```
 
 ### **Required arguments**
 
@@ -28,8 +31,11 @@ Argument | Description
 
 ## Code style
 
-We recommend you use a [pre-commit](https://github.com/pre-commit/pre-commit) hook, which runs [black](https://github.com/psf/black) when you type git commit:
+We recommend you use a [pre-commit](https://pre-commit.com/#install) hook, which runs [black](https://github.com/psf/black) when you type git commit.
+
+Run the following script at the root of the repository:
 
 ```bash
+pip install pre-commit
 pre-commit install
 ```
