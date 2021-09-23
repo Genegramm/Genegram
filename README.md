@@ -29,6 +29,12 @@ Argument | Description
 --seq_fasta | Path to the `seq.fasta` file
 --out | Path to the folder where the predictions will be saved
 
+### **NOT required arguments**
+
+Argument | Description
+:--- | :---
+--model | Type of the model to be used
+
 ## Code style
 
 We recommend you use a [pre-commit](https://pre-commit.com/#install) hook, which runs [black](https://github.com/psf/black) when you type git commit.
