@@ -1,11 +1,13 @@
 import tempfile
-from argparse import ArgumentParser
+from argparse import ArgumentParser, RawTextHelpFormatter
 from pathlib import Path
 
 from genegram import seq_fasta_to_pictures, predict, ROOT
 
 if __name__ == "__main__":
-    parser = ArgumentParser(description="Genegram")
+    parser = ArgumentParser(
+        description="Genegram", formatter_class=RawTextHelpFormatter
+    )
     parser.add_argument(
         "--seq_fasta", required=True, type=str, help="Path to the `seq.fasta` file"
     )
@@ -22,10 +24,10 @@ if __name__ == "__main__":
         choices=["main", "mps", "pks"],
         default="main",
         help=(
-            "Type of the model to be used:\n"
-            "main -- The default model, the best on average\n"
-            "mps -- Multiplet prediction model\n"
-            "pks -- Pseudoknots prediction model\n"
+            "Type of the model to be used:"
+            "\nmain -- The default model, the best on average"
+            "\nmps -- Multiplet prediction model"
+            "\npks -- Pseudoknots prediction model"
         ),
     )
 
