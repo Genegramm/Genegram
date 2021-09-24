@@ -37,18 +37,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      # Install requirements
-      - name: Install requirements
-
-        # Runs command-line programs using the operating system's shell
-        run: |
-          python -m pip install --upgrade pip wheel setuptools
-          python -m pip install -r requirements.txt
-          python -m pip list
-
-      # Install pre-commit from .pre-commit-config.yaml
+      # Install pre-commit
       - name: Install pre-commit
         run: |
+          python -m pip install pre-commit==2.15.0
           pre-commit install
 
       # Run pre-commit on all the files in the repo
