@@ -37,16 +37,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      # Install pre-commit and black
-      - name: Install pre-commit and black
-
-        # Runs command-line programs using the operating system's shell
-        run: |
-          python -m pip install pre-commit==2.15.0 black==20.8b1
-
-      # Configure pre-commit by .pre-commit-config.yaml
+      # Install pre-commit
       - name: Install pre-commit
         run: |
+          python -m pip install pre-commit==2.15.0
           pre-commit install
 
       # Run pre-commit on all the files in the repo
