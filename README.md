@@ -22,12 +22,13 @@ Run the following command with arguments.
 python -m genegram
 ```
 
-### **Required arguments**
+### **Arguments**
 
-Argument | Description
-:--- | :---
---seq_fasta | Path to the `seq.fasta` file
---out | Path to the folder where the predictions will be saved
+Argument | Required | Description
+:--- | :---: | :---
+--seq_fasta | True | Path to the `seq.fasta` file
+--out | True | Path to the folder where the predictions will be saved
+--model | False | Type of the model to be used: </br> `main` -- The default model, the best on average </br> `mps` -- Multiplet prediction model </br> `pks` -- Pseudoknots prediction model
 
 ## Code style
 

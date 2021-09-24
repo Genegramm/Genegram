@@ -240,7 +240,7 @@ def parallel_res_network(
     return model
 
 
-def predict(input_dir: Path, output_dir: Path):
+def predict(input_dir: Path, output_dir: Path, weights: Path):
     # setup environment
     os.environ["PYTHONHASHSEED"] = "0"
     np.random.seed(42)
@@ -264,7 +264,7 @@ def predict(input_dir: Path, output_dir: Path):
         bn=False,
         dr=0.1,
     )
-    model.load_weights(str(ROOT / "weights.h5"))
+    model.load_weights(weights)
 
     # create dir for `output_dir`
     data_dir = Path(output_dir).resolve()
