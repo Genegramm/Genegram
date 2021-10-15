@@ -1,8 +1,13 @@
 import logging
+import os
 from collections import namedtuple
 from pathlib import Path
 
 import numpy as np
+
+# hide TensorFlow warnings
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+
 import tensorflow as tf
 from keras import backend as K
 from keras import regularizers
