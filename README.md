@@ -26,9 +26,10 @@ python -m genegram
 
 Argument | Required | Description
 :--- | :---: | :---
---seq_fasta | True | Path to the `seq.fasta` file
---out | True | Path to the folder where the predictions will be saved
---model | False | Type of the model to be used: </br> `main` -- The default model, the best on average </br> `mps` -- Multiplet prediction model </br> `pks` -- Pseudoknots prediction model
+-i, --inp | True | Path to the [`FASTA`](http://genetics.bwh.harvard.edu/pph/FASTA.html) file
+-o, --out | True | Path to the folder where the [`Connectivity Tables`](http://rna.urmc.rochester.edu/Text/File_Formats.html#CT) will be saved
+-m, --model | False | Type of the model to be used: </br> `main` -- The default model, the best on average </br> `mps` -- Multiplet prediction model </br> `pks` -- Pseudoknots prediction model
+-l, --log | False | Type of the logging level to be used: </br> `INFO` -- Confirmation that things are working as expected </br> `WARNING` -- An indication that something unexpected happened, the software is still working as expected </br> `ERROR` -- Due to a more serious problem, the software has not been able to perform some function </br> `CRITICAL` -- A serious error, indicating that the program itself may be unable to continue running </br> `DEBUG` -- Detailed information, typically of interest only when diagnosing problems
 
 ## Code style
 

@@ -4,8 +4,8 @@ from genegram.shared import *
 import genegram.cfpq_pyalgo
 from genegram.cfpq_pyalgo import *
 
-import genegram.draw
-from genegram.draw import *
+import genegram.parsing
+from genegram.parsing import *
 
-import genegram.model
-from genegram.model import *
+import genegram.predict
+from genegram.predict import *

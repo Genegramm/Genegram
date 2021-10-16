@@ -1,60 +1,52 @@
-import glob
+import logging
 import os
-import random as rn
+from collections import namedtuple
 from pathlib import Path
 
 import numpy as np
+
+# hide TensorFlow warnings
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+
 import tensorflow as tf
-from PIL import Image
 from keras import backend as K
 from keras import regularizers
 from keras.layers import Dropout, Conv2D, Input, Activation, BatchNormalization, add
 from keras.models import Model
-from skimage.io import imread
 from tensorflow.keras.layers import Layer
-from tqdm import tqdm
 
-from genegram.shared import ROOT
+from genegram.parsing import RNA, rna_to_img
 
+__all__ = [
+    "PredictionContext",
+    "rna_predict",
+    "img_predict",
+    "img_binarize",
+    "img_to_ct",
+    "remove_multiplets",
+    "setup_model",
+    "clear_session",
+]
 
-# Data processing functions
-
-# set each gray pixel of network prediction to black/white
-# according to threshold coeff
-def binarize_output(img, coeff=0.6):
-    size = len(img)
-    for i in range(size):
-        for j in range(size):
-            if i != j:
-                if img[i][j] > 255 * coeff:
-                    img[i][j] = 255
-                else:
-                    img[i][j] = 0
-    return img
-
-
-# load one image in format accepted by network (required for tests)
-def load_image(f):
-    img_arr = []
-    img = imread(f, as_gray=True)
-    n = img.shape[0]
-    img_arr.append(img)
-    return np.array(img_arr).reshape(1, n, n, 1)
+PredictionContext = namedtuple(
+    "PredictionContext",
+    [
+        "rna",
+        "img_rna",
+        "img_pred",
+        "ct",
+    ],
+)
 
 
-# get model output on input file f
-def predict_img(f, model):
-    inp = load_image(f)
-    res = model.predict(inp)
-    k = len(inp[0])
-    img = np.array(Image.new("L", (k, k), (255)))
-    for i in range(k):
-        for j in range(k):
-            img[i][j] = min(res[0][i][j][0], 255)
-    return img
+def clear_session():
+    logging.info("Clear TensorFlow session")
+    K.clear_session()
 
 
-def img2ct(img, meta, seq):
+def img_to_ct(img, meta, seq):
+    logging.info(f"Create Connectivity Table for RNA({meta}, {seq})")
+
     size = len(img)
     ct = "  " + str(size) + " " + meta + "\n"
     for i in range(size):
@@ -77,6 +69,9 @@ def img2ct(img, meta, seq):
             + str(i + 1)
             + "\n"
         )
+
+    logging.debug(f"img_to_ct():\n{img=} \n{meta=} \n{seq=} \n{ct=}")
+
     return ct
 
 
@@ -150,6 +145,26 @@ def remove_multiplets(img):
                 else:
                     to_delete.append((i, j))
     return img
+
+
+# set each gray pixel of network prediction to black/white
+# according to threshold coeff
+def img_binarize(img, coeff=0.6):
+    logging.info(f"Binarize image")
+
+    im = img.copy()
+    size = len(img)
+    for i in range(size):
+        for j in range(size):
+            if i != j:
+                if im[i][j] > 255 * coeff:
+                    im[i][j] = 255
+                else:
+                    im[i][j] = 0
+
+    logging.debug(f"img_binarize():\n{img=} \n{coeff=} \n{im=}")
+
+    return im
 
 
 # Model definition functions
@@ -240,21 +255,19 @@ def parallel_res_network(
     return model
 
 
-def predict(input_dir: Path, output_dir: Path, weights: Path):
-    # setup environment
-    os.environ["PYTHONHASHSEED"] = "0"
-    np.random.seed(42)
-    rn.seed(12345)
-    session_conf = tf.compat.v1.ConfigProto(
+def setup_model(weights: Path):
+    # setup session
+    tf_session_config = tf.compat.v1.ConfigProto(
         intra_op_parallelism_threads=1, inter_op_parallelism_threads=1
     )
-    tf.random.set_seed(1234)
-    sess = tf.compat.v1.Session(
-        graph=tf.compat.v1.get_default_graph(), config=session_conf
+    tf_session = tf.compat.v1.Session(
+        graph=tf.compat.v1.get_default_graph(), config=tf_session_config
     )
-    K.set_session(sess)
+    K.set_session(tf_session)
 
-    # load model and predict image for each sample in input_dir
+    logging.info("Setup TensorFlow session")
+
+    # setup model
     model = parallel_res_network(
         blocks_num=4,
         units_num=5,
@@ -266,15 +279,56 @@ def predict(input_dir: Path, output_dir: Path, weights: Path):
     )
     model.load_weights(weights)
 
-    # create dir for `output_dir`
-    data_dir = Path(output_dir).resolve()
-    data_dir.mkdir(parents=True, exist_ok=True)
+    logging.info(f"Setup model")
+    logging.debug(f"setup_model():\n{weights=} \n{model=}")
 
-    files = glob.glob(str(input_dir) + "/*.png")
-    for file in tqdm(files, desc="Predicting"):
-        img = predict_img(file, model)
-        img = binarize_output(img)
-        # ...some other post-processing
-        Image.fromarray(img, "L").save(file.replace(input_dir, output_dir))
+    return model
 
-    K.clear_session()
+
+# get model output on input image pil_img
+def img_predict(pil_img, model):
+    logging.info("Predict image")
+
+    img = np.array(pil_img)
+    n = len(img)
+    inp = np.array([img]).reshape((1, n, n, 1))
+
+    pred = model.predict(inp)
+
+    res = np.full(shape=(n, n), fill_value=255, dtype=np.uint8)
+    for i in range(n):
+        for j in range(n):
+            res[i][j] = min(pred[0][i][j][0], 255)
+
+    logging.debug(
+        f"img_predict():\n{pil_img=} \n{model=} \n{img=} \n{n=} \n{inp=} \n{pred=} \n{res=}"
+    )
+
+    return res
+
+
+def rna_predict(rna: RNA, model):
+    logging.info("Predict RNA")
+
+    img_rna = rna_to_img(rna)
+
+    pred = img_predict(img_rna, model)
+
+    pred_bin = img_binarize(pred)
+
+    ct = img_to_ct(
+        pred_bin,
+        rna.description,
+        rna.sequence.upper(),
+    )
+
+    logging.debug(
+        f"rna_predict():\n{rna=} \n{model=} \n{img_rna=} \n{pred=} \n{pred_bin=} \n{ct=}"
+    )
+
+    return PredictionContext(
+        rna=rna,
+        img_rna=img_rna,
+        img_pred=pred_bin,
+        ct=ct,
+    )
