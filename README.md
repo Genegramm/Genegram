@@ -19,7 +19,8 @@ pip install --user pipenv
 ### Install Genegram (from sources)
 
 ```shell
-git clone https://github.com/vdshk/Genegram.git
+git clone https://github.com/JetBrains-Research/Genegram
+cd Genegram
 pipenv install --ignore-pipfile
 ```
 
