@@ -6,12 +6,22 @@
 
 [comment]: <> (TODO)
 
-## Installation
+## Install
 
-Simply clone the repository and run the following commands:
+We use [`Pipenv`](https://pipenv.pypa.io/en/latest/) to manage dependencies.
 
-```bash
-pip install -r requirements.txt
+### [Install Pipenv](https://pipenv.pypa.io/en/latest/#install-pipenv-today)
+
+```shell
+pip install --user pipenv
+```
+
+### Install Genegram (from sources)
+
+```shell
+git clone https://github.com/JetBrains-Research/Genegram
+cd Genegram
+pipenv install --ignore-pipfile
 ```
 
 ## Usage
@@ -35,9 +45,15 @@ Argument | Required | Description
 
 We recommend you use a [pre-commit](https://pre-commit.com/#install) hook, which runs [black](https://github.com/psf/black) when you type git commit.
 
-Run the following script at the root of the repository:
+### Install pre-commit
 
-```bash
-pip install pre-commit
+```shell
+pipenv install --dev
 pre-commit install
+```
+
+### Use pre-commit
+
+```shell
+pre-commit run --all-files --color always --verbose
 ```
