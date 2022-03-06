@@ -1,121 +1,134 @@
-from typing import AbstractSet, Iterable, Tuple
+from collections import defaultdict
+from typing import Dict, List
 
-from cfpq_data import cnf_from_cfg
-from networkx import MultiDiGraph
-from pyformlang.cfg import CFG, Variable, Terminal
-from pygraphblas import Matrix, BOOL
+import pygraphblas as gb
+from pyformlang.cfg import CFG, Production, Variable, Terminal, Epsilon
 
 __all__ = [
-    "CNF",
-    "BooleanMatrixGraph",
     "all_pairs_reachability_matrix",
+    "WCNF",
+    "BooleanMatrixGraph",
 ]
 
 
-class CNF:
-    def __init__(
-        self,
-        start_symbol: Variable,
-        variables: AbstractSet[Variable],
-        terminals: AbstractSet[Terminal],
-        unary_productions: Iterable[Tuple[Variable, Terminal]],
-        double_productions: Iterable[Tuple[Variable, Variable, Variable]],
-    ):
-        self.start_symbol = start_symbol
-        self.variables = variables
-        self.terminals = terminals
-        self.unary_productions = unary_productions
-        self.double_productions = double_productions
+class BooleanMatrixGraph:
+    def __init__(self, matrices_size):
+        self._matrices: Dict[str, gb.Matrix] = dict()
+        self._matrices_size: int = matrices_size
 
-    @classmethod
-    def from_cfg(cls, cfg: CFG):
-        base_cnf = cnf_from_cfg(cfg)
+    def __getitem__(self, label) -> gb.Matrix:
+        if label not in self._matrices:
+            self._matrices[label] = gb.Matrix.sparse(
+                typ=gb.BOOL,
+                nrows=self._matrices_size,
+                ncols=self._matrices_size,
+            )
+        return self._matrices[label]
 
-        unary_productions = list()
-        double_productions = list()
+    def __setitem__(self, label, matrix: gb.Matrix) -> None:
+        self._matrices[label] = matrix
 
-        for p in base_cnf.productions:
-            if len(p.body) == 0:
-                unary_productions.append((p.head, Terminal("$")))
-            elif len(p.body) == 1:
-                unary_productions.append((p.head, Terminal(p.body[0].value)))
-            elif len(p.body) == 2:
-                double_productions.append(
-                    (p.head, Variable(p.body[0].value), Variable(p.body[1].value))
-                )
 
-        cnf = CNF(
-            base_cnf.start_symbol,
-            base_cnf.variables,
-            base_cnf.terminals,
-            unary_productions,
-            double_productions,
+class WCNF:
+    def __init__(self, cfg: CFG):
+        self._cfg: CFG = cfg
+        self.start_symbol: Variable = cfg.start_symbol
+
+        if not _is_in_wcnf(cfg):
+            cnf = cfg.to_normal_form()
+        else:
+            cnf = cfg
+
+        self.epsilon_productions: List[Production] = []
+        self.unary_productions: List[Production] = []
+        self.binary_productions: List[Production] = []
+
+        for production in self._cfg.productions:
+            if production.body in ([], Epsilon):
+                if production not in self.epsilon_productions:
+                    self.epsilon_productions.append(production)
+
+        for production in cnf.productions:
+            if len(production.body) == 1:
+                if production not in self.unary_productions:
+                    self.unary_productions.append(production)
+            elif len(production.body) == 2:
+                if production not in self.binary_productions:
+                    self.binary_productions.append(production)
+
+        self.productions = (
+            self.epsilon_productions + self.unary_productions + self.binary_productions
         )
 
-        return cnf
+        self.variables: List[Variable] = []
+        self.terminals: List[Terminal] = []
 
-    @classmethod
-    def from_text(cls, text, start_symbol: Variable = Variable("S")):
-        return CNF.from_cfg(CFG.from_text(text, start_symbol))
+        for production in self.productions:
+            if production.head not in self.variables:
+                self.variables.append(production.head)
 
+            for term in production.body:
+                if isinstance(term, Terminal):
+                    if term not in self.terminals:
+                        self.terminals.append(term)
+                elif isinstance(term, Variable):
+                    if term not in self.variables:
+                        self.variables.append(term)
 
-class BooleanMatrixGraph:
-    def __init__(self, matrices_size: int):
-        self.matrices_size = matrices_size
-        self.matrices = dict()
+        self.variables.sort(key=str)
+        self.terminals.sort(key=str)
+        self.epsilon_productions.sort(key=str)
+        self.unary_productions.sort(key=str)
+        self.unary_productions.sort(key=str)
+        self.binary_productions.sort(key=str)
+        self.productions.sort(key=str)
 
-    def __getitem__(self, item) -> Matrix:
-        if item not in self.matrices:
-            self.matrices[item] = Matrix.sparse(
-                BOOL, self.matrices_size, self.matrices_size
-            )
-        return self.matrices[item]
-
-    def __setitem__(self, key, value):
-        self.matrices[key] = value
-
-    def __iter__(self):
-        return self.matrices.__iter__()
-
-    @property
-    def labels(self):
-        return list(self.matrices.keys())
-
-    @classmethod
-    def from_multidigraph(cls, g: MultiDiGraph):
-        bmg = BooleanMatrixGraph(g.number_of_nodes())
-
-        for u, v, edge_labels in g.edges(data=True):
-            bmg[Terminal(edge_labels["label"])][u, v] = 1
-
-        return bmg
-
-    @classmethod
-    def from_triples(cls, triples):
-        number_of_nodes = max({max(u, v) for u, label, v in triples})
-
-        bmg = BooleanMatrixGraph(number_of_nodes + 1)
-
-        for u, label, v in triples:
-            bmg[Terminal(label)][u, v] = 1
-
-        return bmg
+    def contains(self, word: str):
+        return self._cfg.contains(word)
 
 
-def all_pairs_reachability_matrix(graph: BooleanMatrixGraph, grammar: CNF):
-    m = BooleanMatrixGraph(graph.matrices_size)
-    for l, r in grammar.unary_productions:
+def _is_in_wcnf(cfg: CFG) -> bool:
+    for production in cfg.productions:
+        if len(production.body) > 2:
+            return False
+        elif len(production.body) == 2:
+            if not (
+                isinstance(production.body[0], Variable)
+                and isinstance(production.body[1], Variable)
+            ):
+                return False
+        elif len(production.body) == 1:
+            if not isinstance(production.body[0], Terminal):
+                return False
+    return True
+
+
+def all_pairs_reachability_matrix(graph: BooleanMatrixGraph, grammar: WCNF):
+    m = BooleanMatrixGraph(graph._matrices_size)
+
+    for production in grammar.unary_productions:
+        # production :: l -> r
+        l = production.head
+        r = production.body[0]
+
         m[l] += graph[r]
 
     changed = True
+    nvals = defaultdict(int)
     while changed:
         changed = False
-        for l, r1, r2 in grammar.double_productions:
-            old_nnz = m[l].nvals
-            m[l] += m[r1].mxm(m[r2], semiring=BOOL.ANY_PAIR)
-            new_nnz = m[l].nvals
+        for production in grammar.binary_productions:
+            # production :: l -> r1 r2
+            l = production.head
+            r1 = production.body[0]
+            r2 = production.body[1]
 
-            if old_nnz != new_nnz:
-                changed = True
+            m[l] += m[r1].mxm(m[r2], semiring=gb.BOOL.ANY_PAIR)
+
+            nnz = m[l].nvals
+
+            changed |= nvals[l] != nnz
+
+            nvals[l] = nnz
 
     return m[grammar.start_symbol]

@@ -1,71 +1,74 @@
-import logging
-from collections import namedtuple
 from pathlib import Path
-from typing import Iterator
+from typing import Iterator, List
 
 from PIL import Image, ImageDraw
-from cfpq_data import cfg_from_txt
 from pyformlang.cfg import Terminal
 
-from genegram.cfpq_pyalgo import BooleanMatrixGraph, CNF, all_pairs_reachability_matrix
-from genegram.shared import ROOT
-
-GRAMMAR = CNF.from_cfg(cfg_from_txt(ROOT / "grammar.txt"))
-NUCLEOTIDE_TO_COLOR = {"a": 32, "c": 64, "g": 96, "u": 128}
-
-RNA = namedtuple("RNA", ["description", "sequence"])
+from genegram.cfpq_pyalgo import BooleanMatrixGraph, all_pairs_reachability_matrix
+from genegram.shared import GROUP_LEN, GRAMMAR, RNA, NUCLEOTIDE_TO_COLOR
 
 __all__ = [
-    "RNA",
     "read_fasta",
-    "rna_to_img",
+    "create_images",
 ]
 
 
-def read_fasta(fasta: Path) -> Iterator[RNA]:
-    logging.info(f"Read {fasta=}")
+def read_fasta(fasta: Path, limit: int = GROUP_LEN) -> Iterator[List[RNA]]:
+    cur_group = []
+    cur_len = 0
+
     with open(fasta, "r") as fin:
         while True:
-            desc = fin.readline().strip()
+            desc = fin.readline().strip()[1:]
 
-            # EOF
+            # EOF reached
             if not desc:
                 break
 
             seq = fin.readline().strip()
 
-            logging.debug(f"read_fasta():\n{desc=} \n{seq=}")
+            rna = RNA(desc, seq)
 
-            yield RNA(desc[1:], seq.lower())
+            if abs(limit - cur_len) > abs(limit - (cur_len + 1 + len(seq))):
+                cur_group.append(rna)
+                cur_len += 1 + len(seq)
+            else:
+                yield cur_group
+                cur_group = [rna]
+                cur_len = 1 + len(seq)
+
+    if cur_group:
+        yield cur_group
 
 
-def rna_to_img(rna: RNA) -> Image:
-    logging.info(f"{rna=} to image")
+def create_images(rna_group: List[RNA]):
+    # in grammar, terminals must be lowercase
+    glued_rna = "$".join((seq.lower() for _, seq in rna_group))
+    bmg = BooleanMatrixGraph(matrices_size=len(glued_rna) + 1)
 
-    bmg = BooleanMatrixGraph(matrices_size=len(rna.sequence) + 1)
-
-    for i, nucleotide in enumerate(rna.sequence):
+    for i, nucleotide in enumerate(glued_rna):
         bmg[Terminal(nucleotide)][i, i + 1] = True
 
-    reachabilities = all_pairs_reachability_matrix(
-        graph=bmg,
-        grammar=GRAMMAR,
-    )
+    reachabilities = all_pairs_reachability_matrix(graph=bmg, grammar=GRAMMAR)
 
-    # create white&black 8-bit image
-    img = Image.new(mode="L", size=(bmg.matrices_size - 1, bmg.matrices_size - 1))
-    im_draw = ImageDraw.Draw(img)
+    prefix = 0
+    for index, (desc, seq) in enumerate(rna_group):
+        n = len(seq)
 
-    # draw reachabilities
-    I, J, _ = reachabilities.to_lists()
-    for k, i in enumerate(I):
-        j = J[k]
-        im_draw.line(xy=[(j - 3, i + 2), (j - 1, i)], fill=255)
+        # create white&black 8-bit image
+        image = Image.new(mode="L", size=(n, n))
+        image_draw = ImageDraw.Draw(image)
 
-    # draw letters
-    for i, nucleotide in enumerate(rna.sequence):
-        im_draw.point(xy=(i, i), fill=NUCLEOTIDE_TO_COLOR[nucleotide])
+        # draw pairings
+        I, J, _ = reachabilities[
+            prefix : (prefix + n), prefix : (prefix + n)
+        ].to_lists()
+        for i, j in zip(I, J):
+            image_draw.line(xy=[(j - 3, i + 2), (j - 1, i)], fill=255)
 
-    logging.debug(f"rna_to_img():\n{bmg=} \n{reachabilities=} \n{img=}")
+        # draw nucleotides
+        for i, nucleotide in enumerate(seq):
+            image_draw.point(xy=(i, i), fill=NUCLEOTIDE_TO_COLOR[nucleotide])
 
-    return img
+        prefix += n + 1
+        yield index, image

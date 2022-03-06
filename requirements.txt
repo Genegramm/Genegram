@@ -1,0 +1,4 @@
+tensorflow==2.7.0
+pygraphblas==4.2.2
+pyformlang==0.1.26
+pillow==8.4.0
