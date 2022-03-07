@@ -80,6 +80,7 @@ if __name__ == "__main__":
         version=version,
         keywords=keywords,
         packages=find_packages(),
+        package_data={"": ["weights/*.h5"]},
         platforms=platforms,
         url=url,
         project_urls=project_urls,
