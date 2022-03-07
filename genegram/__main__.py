@@ -31,14 +31,6 @@ if __name__ == "__main__":
             "\npks -- Pseudoknots prediction model"
         ),
     )
-    parser.add_argument(
-        "-b",
-        "--bin",
-        required=False,
-        type=float,
-        default=0.6,
-        help="Binarization coefficient",
-    )
 
     args = parser.parse_args()
 
@@ -46,5 +38,4 @@ if __name__ == "__main__":
         fasta=Path(args.inp).resolve(),
         out=Path(args.out).resolve(),
         weights=args.model,
-        bin_coeff=args.bin,
     )
