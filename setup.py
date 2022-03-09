@@ -7,7 +7,7 @@ root = Path(__file__).parent.resolve()
 with open(root / "README.md", "r", encoding="utf-8") as f:
     long_description = f.read()
 
-with open(root / "genegram/__init__.py") as f:
+with open(root / "genegram/__init__.py", "r", encoding="utf-8") as f:
     for line in f:
         if line.startswith("__version__"):
             version = line.strip().split()[-1][1:-1]
