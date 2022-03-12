@@ -4,7 +4,8 @@ from pathlib import Path
 
 from genegram.main import process_fasta_group
 
-if __name__ == "__main__":
+
+def main():
     parser = ArgumentParser(
         description="Genegram", formatter_class=RawTextHelpFormatter
     )
@@ -40,3 +41,7 @@ if __name__ == "__main__":
         out=Path(args.out).resolve(),
         weights=args.model,
     )
+
+
+if __name__ == "__main__":
+    main()

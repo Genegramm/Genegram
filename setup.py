@@ -89,4 +89,5 @@ if __name__ == "__main__":
         extras_require=extras_require,
         python_requires=">=3.8",
         zip_safe=False,
+        entry_points={"console_scripts": ["genegram=genegram.__main__:main"]},
     )
