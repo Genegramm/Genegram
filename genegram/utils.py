@@ -1,11 +1,31 @@
+"""Post-processing utilities"""
 __all__ = [
     "binarize_image",
     "create_connectivity_table",
     "remove_multiplets",
 ]
 
+import numpy as np
 
-def create_connectivity_table(image, meta, seq):
+
+def create_connectivity_table(image: np.ndarray, meta: str, seq: str) -> str:
+    """Creates a Connectivity Table from an RNA Secondary Structure
+    represented as an image
+
+    Parameters
+    ----------
+    image: np.ndarray
+        RNA Secondary Structure
+    meta: str
+        RNA description
+    seq: str
+        RNA sequence
+
+    Returns
+    -------
+    ct: str
+        Connectivity Table
+    """
     size = len(image)
     ct = "  " + str(size) + " " + meta + "\n"
     for i in range(size):
@@ -31,7 +51,20 @@ def create_connectivity_table(image, meta, seq):
     return ct
 
 
-def remove_multiplets(image):
+def remove_multiplets(image: np.ndarray) -> np.ndarray:
+    """Remove multiplets from network prediction of RNA Secondary Structure
+
+    Parameters
+    ----------
+    image: np.ndarray
+        RNA Secondary Structure
+
+    Returns
+    -------
+    image: np.ndarray
+        RNA Secondary Structure with removed multiplets
+    """
+
     def get_multiplets(i0, j0, image):
         mps = []
         size = len(image)
@@ -103,9 +136,22 @@ def remove_multiplets(image):
     return image
 
 
-# set each gray pixel of network prediction to black/white
-# according to threshold coeff
-def binarize_image(image, bin_coeff=0.6):
+def binarize_image(image: np.ndarray, bin_coeff: float = 0.6) -> np.ndarray:
+    """Set each gray pixel of network prediction `image` to black/white
+    according to threshold coeff
+
+    Parameters
+    ----------
+    image: np.ndarray
+        Network prediction image
+    bin_coeff: float
+        Binarization coefficient
+
+    Returns
+    -------
+    im: np.ndarray
+        Binarized image
+    """
     im = image.copy()
     size = len(image)
     for i in range(size):
