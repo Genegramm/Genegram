@@ -1,7 +1,8 @@
+"""Genegram CLI"""
 from argparse import ArgumentParser, RawTextHelpFormatter
 from pathlib import Path
 
-from genegram.main import process_fasta
+from genegram.main import process_fasta_group
 
 if __name__ == "__main__":
     parser = ArgumentParser(
@@ -34,7 +35,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    process_fasta(
+    process_fasta_group(
         fasta=Path(args.inp).resolve(),
         out=Path(args.out).resolve(),
         weights=args.model,

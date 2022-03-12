@@ -16,4 +16,4 @@ import genegram.predict
 from genegram.predict import *
 
 import genegram.main
-from genegram.main import process_fasta
+from genegram.main import *
