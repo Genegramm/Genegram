@@ -27,27 +27,29 @@ def create_connectivity_table(image: np.ndarray, meta: str, seq: str) -> str:
         Connectivity Table
     """
     size = len(image)
-    ct = "  " + str(size) + " " + meta + "\n"
+    # ct = "  " + str(size) + " " + meta + "\n"
+    ct = f"  {size} {meta}\n"
     for i in range(size):
         pair = 0
         for j in range(size):
             if image[i][j] == 255 or image[j][i] == 255:
                 pair = j + 1
-        ct += (
-            "    "
-            + str(i + 1)
-            + " "
-            + seq[i]
-            + "       "
-            + str(i)
-            + "    "
-            + str(i + 2)
-            + "  "
-            + str(pair)
-            + "    "
-            + str(i + 1)
-            + "\n"
-        )
+        ct += f"    {i + 1} {seq[i]}       {i}    {i + 2}  {pair}    {i + 1}\n"
+        # ct += (
+        #     "    "
+        #     + str(i + 1)
+        #     + " "
+        #     + seq[i]
+        #     + "       "
+        #     + str(i)
+        #     + "    "
+        #     + str(i + 2)
+        #     + "  "
+        #     + str(pair)
+        #     + "    "
+        #     + str(i + 1)
+        #     + "\n"
+        # )
     return ct
 
 

@@ -1,6 +1,7 @@
 from glob import glob
 from pathlib import Path
 
+import numpy as np
 from PIL import Image, ImageChops
 
 from genegram import (
@@ -19,7 +20,7 @@ def test_binarize_image():
     model = setup_model(Path(genegram_path[0]) / "weights" / "main.h5")
     for image_path in glob(str(root.parent / "data" / "parsing" / "*")):
         image = Image.open(image_path)
-        prediction = predict(image, model)
+        prediction = predict(np.array(image), model)
         pred_bin = binarize_image(prediction)
 
         actual_binarized = Image.fromarray(pred_bin)
@@ -31,4 +32,3 @@ def test_binarize_image():
             ImageChops.difference(actual_binarized, expected_binarized).getbbox()
             is None
         )
-    clear_session()
