@@ -39,21 +39,19 @@ def test_limit_50():
         [
             RNA(description="34553", sequence="GGAGUGGCCGAAAGGCAUCUCC"),
             RNA(description="34735", sequence="GGCUCUCAGUGAGCC"),
-        ],
-        [
             RNA(description="34736", sequence="GGUGCUCAGUAGGAGACGAACCGCACC"),
-            RNA(description="34737", sequence="GGGCAAGCCC"),
         ],
         [
+            RNA(description="34737", sequence="GGGCAAGCCC"),
             RNA(description="34738", sequence="GGCAGUGUGAGUACCUUCACACGUC"),
             RNA(description="34745", sequence="GGUGUGAACACC"),
-            RNA(description="34767", sequence="GGUGCAUGGCACC"),
         ],
         [
+            RNA(description="34767", sequence="GGUGCAUGGCACC"),
             RNA(
                 description="34840",
                 sequence="GGCGGUACUAGUUGAGAAACUAGCUCUGUAUCUGGCGGACCCGUGGUGGAACUGUGAAGUUCGGAACACCCGGCCGCAACCCUGGGAGAGGUCCCAGGGUU",
-            )
+            ),
         ],
     ]
 

@@ -1,8 +1,8 @@
 """FASTA parsing module"""
 from pathlib import Path
-from typing import Iterator, List, Tuple
+from typing import List, Tuple
 
-from PIL import Image, ImageDraw
+import numpy as np
 
 from genegram.cfpq_pyalgo import BooleanMatrixGraph, all_pairs_reachability_matrix
 from genegram.shared import GROUP_LEN, GRAMMAR, RNA, NUCLEOTIDE_TO_COLOR
@@ -15,7 +15,7 @@ __all__ = [
 ]
 
 
-def read_fasta_single(fasta: Path) -> Iterator[RNA]:
+def read_fasta_single(fasta: Path) -> List[RNA]:
     """Read FASTA file from `fasta` path.
     The FASTA file must be in the following format:
     >`RNA description`
@@ -33,23 +33,17 @@ def read_fasta_single(fasta: Path) -> Iterator[RNA]:
 
     Returns
     -------
-    rna: RNA
-        Iterator over RNA sequences from a file
+    rna: List[RNA]
+        RNA sequences from a FASTA file
     """
     with open(fasta, "r") as fin:
-        while True:
-            desc = fin.readline().strip()[1:]
-
-            # EOF reached
-            if not desc:
-                break
-
-            seq = fin.readline().strip()
-
-            yield RNA(desc, seq)
+        data = fin.readlines()
+    return [
+        RNA(data[i].strip()[1:], data[i + 1].strip()) for i in range(0, len(data), 2)
+    ]
 
 
-def read_fasta_group(fasta: Path, limit: int = GROUP_LEN) -> Iterator[List[RNA]]:
+def read_fasta_group(fasta: Path, limit: int = GROUP_LEN) -> List[List[RNA]]:
     """Read FASTA file from `fasta` path.
     The FASTA file must be in the following format:
     >`RNA description`
@@ -69,38 +63,32 @@ def read_fasta_group(fasta: Path, limit: int = GROUP_LEN) -> Iterator[List[RNA]]
 
     Returns
     -------
-    rna_group:
-        Iterator over group of RNA sequences from a file
+    rna: List[List[RNA]]
+        Grouped RNA sequences from a FASTA file
     """
+    with open(fasta, "r") as fin:
+        data = fin.readlines()
+    result = []
     cur_group = []
     cur_len = 0
 
-    with open(fasta, "r") as fin:
-        while True:
-            desc = fin.readline().strip()[1:]
+    for i in range(0, len(data), 2):
+        rna = RNA(data[i].strip()[1:], data[i + 1].strip())
+        cur_group.append(rna)
+        cur_len += 1 + len(rna.sequence)
 
-            # EOF reached
-            if not desc:
-                break
-
-            seq = fin.readline().strip()
-
-            rna = RNA(desc, seq)
-
-            if abs(limit - cur_len) > abs(limit - (cur_len + 1 + len(seq))):
-                cur_group.append(rna)
-                cur_len += 1 + len(seq)
-            else:
-                if cur_group:
-                    yield cur_group
-                cur_group = [rna]
-                cur_len = 1 + len(seq)
+        if abs(limit - cur_len) < abs(limit - (cur_len + 1 + len(rna.sequence))):
+            result.append(cur_group)
+            cur_group = []
+            cur_len = 0
 
     if cur_group:
-        yield cur_group
+        result.append(cur_group)
+
+    return result
 
 
-def parse_rna_single(rna: RNA) -> Image.Image:
+def parse_rna_single(rna: RNA) -> np.ndarray:
     """Parse RNA `rna` with grammar `GRAMMAR`
 
     Parameters
@@ -109,7 +97,7 @@ def parse_rna_single(rna: RNA) -> Image.Image:
 
     Returns
     -------
-    image: PIL.Image.Image
+    image: np.ndarray
         The result of parsing presented as an image
     """
     n = len(rna.sequence)
@@ -120,22 +108,23 @@ def parse_rna_single(rna: RNA) -> Image.Image:
 
     reachabilities = all_pairs_reachability_matrix(bmg, GRAMMAR)
 
-    image = Image.new(mode="L", size=(n, n))
-    image_draw = ImageDraw.Draw(image)
+    image = np.zeros((n, n), dtype=np.uint8)
 
     # draw pairings
     I, J, _ = reachabilities.to_lists()
     for i, j in zip(I, J):
-        image_draw.line(xy=[(j - 3, i + 2), (j - 1, i)], fill=255)
+        image[i + 2, j - 3] = 255
+        image[i + 1, j - 2] = 255
+        image[i, j - 1] = 255
 
     # draw nucleotides
     for i, nucleotide in enumerate(rna.sequence):
-        image_draw.point(xy=(i, i), fill=NUCLEOTIDE_TO_COLOR[nucleotide])
+        image[i, i] = NUCLEOTIDE_TO_COLOR[nucleotide]
 
     return image
 
 
-def parse_rna_group(rna_group: List[RNA]) -> Iterator[Tuple[int, Image.Image]]:
+def parse_rna_group(rna_group: List[RNA]) -> List[Tuple[int, np.ndarray]]:
     """Parse a group of RNA sequences `rna_group` with grammar `GRAMMAR`
 
     Parameters
@@ -145,9 +134,10 @@ def parse_rna_group(rna_group: List[RNA]) -> Iterator[Tuple[int, Image.Image]]:
 
     Returns
     -------
-    index, image: Tuple[int, PIL.Image.Image]
+    index, image: Tuple[int, np.ndarray]
         Iterator over the result of parsing
     """
+    result = []
     # in grammar, nucleotides must be lowercase
     glued_rna = "$".join((seq.lower() for _, seq in rna_group))
     bmg = BooleanMatrixGraph(len(glued_rna) + 1)
@@ -161,19 +151,22 @@ def parse_rna_group(rna_group: List[RNA]) -> Iterator[Tuple[int, Image.Image]]:
         n = len(seq)
 
         # create white&black 8-bit image
-        image = Image.new(mode="L", size=(n, n))
-        image_draw = ImageDraw.Draw(image)
+        image = np.zeros((n, n), dtype=np.uint8)
 
         # draw pairings
         I, J, _ = reachabilities[
             prefix : (prefix + n), prefix : (prefix + n)
         ].to_lists()
         for i, j in zip(I, J):
-            image_draw.line(xy=[(j - 3, i + 2), (j - 1, i)], fill=255)
+            image[i + 2, j - 3] = 255
+            image[i + 1, j - 2] = 255
+            image[i, j - 1] = 255
 
         # draw nucleotides
         for i, nucleotide in enumerate(seq):
-            image_draw.point(xy=(i, i), fill=NUCLEOTIDE_TO_COLOR[nucleotide])
+            image[i, i] = NUCLEOTIDE_TO_COLOR[nucleotide]
 
         prefix += n + 1
-        yield index, image
+        result.append((index, image))
+
+    return result
