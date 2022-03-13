@@ -1,6 +1,5 @@
 from pathlib import Path
 
-import PIL.Image
 import numpy as np
 import tensorflow as tf
 from keras import backend as K
@@ -131,12 +130,12 @@ def setup_model(weights: Path):
     return model
 
 
-def predict(pil_image: PIL.Image.Image, model: Model) -> np.ndarray:
+def predict(image: np.ndarray, model: Model) -> np.ndarray:
     """Get `model` output on input `pil_image`
 
     Parameters
     ----------
-    pil_image: PIL.Image.Image
+    image: np.ndarray
         Input image
     model: Model
         Prediction model
@@ -146,15 +145,15 @@ def predict(pil_image: PIL.Image.Image, model: Model) -> np.ndarray:
     array: np.ndarray
         Prediction result
     """
-    pixels = np.array(pil_image)
-    n = len(pixels)
-    inputs = np.array([pixels]).reshape((1, n, n, 1))
+    n = image.shape[0]
+    inputs = np.array([image]).reshape((1, n, n, 1))
 
     prediction = model.predict(inputs)
 
     result = np.full(shape=(n, n), fill_value=255, dtype=np.uint8)
     for i in range(n):
         for j in range(n):
-            result[i][j] = min(prediction[0][i][j][0], 255)
+            if prediction[0][i][j][0] < 255:
+                result[i][j] = prediction[0][i][j][0]
 
     return result
