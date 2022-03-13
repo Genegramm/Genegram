@@ -127,14 +127,6 @@ class WCNF:
                     if term not in self.variables:
                         self.variables.append(term)
 
-        self.variables.sort(key=str)
-        self.terminals.sort(key=str)
-        self.epsilon_productions.sort(key=str)
-        self.unary_productions.sort(key=str)
-        self.unary_productions.sort(key=str)
-        self.binary_productions.sort(key=str)
-        self.productions.sort(key=str)
-
     def contains(self, word: str) -> bool:
         """Gives the membership of a word to the grammar
 
