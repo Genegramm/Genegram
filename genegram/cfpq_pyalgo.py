@@ -1,121 +1,238 @@
-from typing import AbstractSet, Iterable, Tuple
+"""The All-Pairs CFL-reachability module"""
+from collections import defaultdict
+from typing import Dict, List
 
-from cfpq_data import cnf_from_cfg
-from networkx import MultiDiGraph
-from pyformlang.cfg import CFG, Variable, Terminal
-from pygraphblas import Matrix, BOOL
+import pygraphblas as gb
+from pyformlang.cfg import CFG, Production, Variable, Terminal, Epsilon
 
 __all__ = [
-    "CNF",
-    "BooleanMatrixGraph",
     "all_pairs_reachability_matrix",
+    "WCNF",
+    "BooleanMatrixGraph",
 ]
 
 
-class CNF:
-    def __init__(
-        self,
-        start_symbol: Variable,
-        variables: AbstractSet[Variable],
-        terminals: AbstractSet[Terminal],
-        unary_productions: Iterable[Tuple[Variable, Terminal]],
-        double_productions: Iterable[Tuple[Variable, Variable, Variable]],
-    ):
-        self.start_symbol = start_symbol
-        self.variables = variables
-        self.terminals = terminals
-        self.unary_productions = unary_productions
-        self.double_productions = double_productions
-
-    @classmethod
-    def from_cfg(cls, cfg: CFG):
-        base_cnf = cnf_from_cfg(cfg)
-
-        unary_productions = list()
-        double_productions = list()
-
-        for p in base_cnf.productions:
-            if len(p.body) == 0:
-                unary_productions.append((p.head, Terminal("$")))
-            elif len(p.body) == 1:
-                unary_productions.append((p.head, Terminal(p.body[0].value)))
-            elif len(p.body) == 2:
-                double_productions.append(
-                    (p.head, Variable(p.body[0].value), Variable(p.body[1].value))
-                )
-
-        cnf = CNF(
-            base_cnf.start_symbol,
-            base_cnf.variables,
-            base_cnf.terminals,
-            unary_productions,
-            double_productions,
-        )
-
-        return cnf
-
-    @classmethod
-    def from_text(cls, text, start_symbol: Variable = Variable("S")):
-        return CNF.from_cfg(CFG.from_text(text, start_symbol))
-
-
 class BooleanMatrixGraph:
-    def __init__(self, matrices_size: int):
-        self.matrices_size = matrices_size
-        self.matrices = dict()
+    """A Labeled Graph decomposed into Boolean Matrices"""
 
-    def __getitem__(self, item) -> Matrix:
-        if item not in self.matrices:
-            self.matrices[item] = Matrix.sparse(
-                BOOL, self.matrices_size, self.matrices_size
+    def __init__(self, number_of_nodes: int = 0):
+        self._matrices: Dict[str, gb.Matrix] = dict()
+        self._number_of_nodes: int = number_of_nodes
+
+    def __getitem__(self, label: str) -> gb.Matrix:
+        if label not in self._matrices:
+            self._matrices[label] = gb.Matrix.sparse(
+                typ=gb.BOOL,
+                nrows=self._number_of_nodes,
+                ncols=self._number_of_nodes,
             )
-        return self.matrices[item]
+        return self._matrices[label]
 
-    def __setitem__(self, key, value):
-        self.matrices[key] = value
-
-    def __iter__(self):
-        return self.matrices.__iter__()
+    def __setitem__(self, label: str, matrix: gb.Matrix) -> None:
+        self._matrices[label] = matrix
 
     @property
-    def labels(self):
-        return list(self.matrices.keys())
+    def number_of_nodes(self) -> int:
+        """The number of nodes in the graph
+        Returns
+        -------
+        number_of_nodes: int
+            Number of nodes in the graph
+        """
+        return self._number_of_nodes
+
+    def add_edge(self, u: int, v: int, label: str) -> None:
+        """Add an edge between `u` and `v` with label `label`.
+        The nodes `u` and `v` will be automatically added if they are
+        not already in the graph.
+        Parameters
+        ----------
+        u: int
+            The tail of the edge
+        v: int
+            The head of the edge
+        label: str
+            The label of the edge
+        """
+        if max(u, v) > self._number_of_nodes - 1:
+            self._number_of_nodes = max(u, v) + 1
+            for key in self._matrices:
+                self._matrices[key].resize(self._number_of_nodes, self._number_of_nodes)
+
+        if label not in self._matrices:
+            self._matrices[label] = gb.Matrix.sparse(
+                typ=gb.BOOL, nrows=self._number_of_nodes, ncols=self._number_of_nodes
+            )
+
+        self._matrices[label][u, v] = True
+
+
+class WCNF:
+    """A Weak Chomsky Normal Form of Context-Free Grammar
+    in which products take the following form:
+    - A -> B C
+    - A -> a
+    - A -> epsilon
+    where `A`, `B` and `C` are variables; `a` is an arbitrary terminal
+    Also known as Weak Chomsky Normal Form
+
+    Parameters
+    ----------
+    cfg: CFG
+        Context-Free Grammar
+    """
+
+    def __init__(self, cfg: CFG):
+        self._cfg: CFG = cfg
+        self.start_variable: Variable = cfg.start_symbol
+
+        if not _is_in_wcnf(cfg):
+            cnf = cfg.to_normal_form()
+        else:
+            cnf = cfg
+
+        self.epsilon_productions: List[Production] = []
+        self.unary_productions: List[Production] = []
+        self.binary_productions: List[Production] = []
+
+        for production in self._cfg.productions:
+            if production.body in ([], Epsilon):
+                if production not in self.epsilon_productions:
+                    self.epsilon_productions.append(production)
+
+        for production in cnf.productions:
+            if len(production.body) == 1:
+                if production not in self.unary_productions:
+                    self.unary_productions.append(production)
+            elif len(production.body) == 2:
+                if production not in self.binary_productions:
+                    self.binary_productions.append(production)
+
+        self.productions = (
+            self.epsilon_productions + self.unary_productions + self.binary_productions
+        )
+
+        self.variables: List[Variable] = []
+        self.terminals: List[Terminal] = []
+
+        for production in self.productions:
+            if production.head not in self.variables:
+                self.variables.append(production.head)
+
+            for term in production.body:
+                if isinstance(term, Terminal):
+                    if term not in self.terminals:
+                        self.terminals.append(term)
+                elif isinstance(term, Variable):
+                    if term not in self.variables:
+                        self.variables.append(term)
+
+    def contains(self, word: str) -> bool:
+        """Gives the membership of a word to the grammar
+
+        Parameters
+        ----------
+        word : str
+            The word to check
+
+        Returns
+        ----------
+        contains : bool
+            Whether word if in the grammar's language or not
+        """
+        return self._cfg.contains(word)
 
     @classmethod
-    def from_multidigraph(cls, g: MultiDiGraph):
-        bmg = BooleanMatrixGraph(g.number_of_nodes())
+    def from_text(cls, text, start_symbol=Variable("S")):
+        """
+        Read a Weak Chomsky Normal Form Context-Free Grammar from a text.
+        The text contains one rule per line.
+        The structure of a production is:
+        head -> body1 | body2 | ... | bodyn
+        where | separates the bodies.
+        A variable (or non terminal) begins by a capital letter.
+        A terminal begins by a non-capital character
+        Terminals and Variables are separated by spaces.
+        An epsilon symbol can be represented by epsilon, $, ε, ϵ or Є.
+        If you want to have a variable name starting with a non-capital \
+        letter or a terminal starting with a capital letter, you can \
+        explicitly give the type of your symbol with "VAR:yourVariableName" \
+        or "TER:yourTerminalName" (with the quotation marks). For example:
+        S -> "TER:John" "VAR:d" a b
 
-        for u, v, edge_labels in g.edges(data=True):
-            bmg[Terminal(edge_labels["label"])][u, v] = 1
+        Parameters
+        ----------
+        text : str
+            The text of transform
+        start_symbol : str, optional
+            The start symbol, S by default
 
-        return bmg
-
-    @classmethod
-    def from_triples(cls, triples):
-        number_of_nodes = max({max(u, v) for u, label, v in triples})
-
-        bmg = BooleanMatrixGraph(number_of_nodes + 1)
-
-        for u, label, v in triples:
-            bmg[Terminal(label)][u, v] = 1
-
-        return bmg
+        Returns
+        -------
+        wcnf : WCNF
+            A Weak Chomsky Normal Form Context-Free Grammar
+        """
+        return cls(CFG.from_text(text, start_symbol))
 
 
-def all_pairs_reachability_matrix(graph: BooleanMatrixGraph, grammar: CNF):
-    m = BooleanMatrixGraph(graph.matrices_size)
-    for l, r in grammar.unary_productions:
-        m[l] += graph[r]
+def _is_in_wcnf(cfg: CFG) -> bool:
+    for production in cfg.productions:
+        if len(production.body) > 2:
+            return False
+        elif len(production.body) == 2:
+            if not (
+                isinstance(production.body[0], Variable)
+                and isinstance(production.body[1], Variable)
+            ):
+                return False
+        elif len(production.body) == 1:
+            if not isinstance(production.body[0], Terminal):
+                return False
+    return True
+
+
+def all_pairs_reachability_matrix(
+    graph: BooleanMatrixGraph, grammar: WCNF
+) -> gb.Matrix:
+    """Determines the pairs of vertices (`u`, `v`)
+    where there exists a path from `u` to `v`
+    in `graph` and its word is in the language of `grammar`
+
+    Parameters
+    ----------
+    graph: BooleanMatrixGraph
+    grammar: WCNF
+
+    Returns
+    -------
+    pairs: pygraphblas.Matrix
+        Reachability matrix
+    """
+    bmg = BooleanMatrixGraph(graph.number_of_nodes)
+
+    for production in grammar.unary_productions:
+        # production :: l -> r
+        l = production.head.value
+        r = production.body[0].value
+
+        bmg[l] += graph[r]
 
     changed = True
+    nvals = defaultdict(int)
     while changed:
         changed = False
-        for l, r1, r2 in grammar.double_productions:
-            old_nnz = m[l].nvals
-            m[l] += m[r1].mxm(m[r2], semiring=BOOL.ANY_PAIR)
-            new_nnz = m[l].nvals
+        for production in grammar.binary_productions:
+            # production :: l -> r1 r2
+            l = production.head.value
+            r1 = production.body[0].value
+            r2 = production.body[1].value
 
-            if old_nnz != new_nnz:
-                changed = True
+            bmg[l] += bmg[r1].mxm(bmg[r2], semiring=gb.BOOL.ANY_PAIR)
 
-    return m[grammar.start_symbol]
+            nnz = bmg[l].nvals
+
+            changed |= nvals[l] != nnz
+
+            nvals[l] = nnz
+
+    return bmg[grammar.start_variable.value]

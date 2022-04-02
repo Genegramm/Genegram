@@ -1,0 +1,28 @@
+name: Test
+
+on: [ push, pull_request ]
+
+jobs:
+  tests:
+    runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        python-version: [ "3.8" ]
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install packages
+        run: |
+          python -m pip install --upgrade pip wheel setuptools
+          python -m pip install .
+          python -m pip install -r requirements/test.txt
+          python -m pip list
+
+      - name: Test Genegram
+        run: |
+          pytest -vv -s tests
