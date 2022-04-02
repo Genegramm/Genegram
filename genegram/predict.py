@@ -51,7 +51,7 @@ class WeightedSum(Layer):
 
 
 # residual unit definition, classical structure in ML
-def res_unit(inputs, filters, kernels, activ, bn=False, dr=0):
+def res_unit(inputs, filters, kernels, activ, bn=False, dr=0.0):
     x = inputs
     if bn:
         x = BatchNormalization()(x)
@@ -69,8 +69,8 @@ def res_unit(inputs, filters, kernels, activ, bn=False, dr=0):
 
 
 # residual network definition: repeating res units
-# + skip sonnections(add layers)
-def res_network(inputs, units_num, filters, kernels, activ="relu", bn=False, dr=0):
+# + skip connections(add layers)
+def res_network(inputs, units_num, filters, kernels, activ="relu", bn=False, dr=0.0):
     x = res_unit(inputs, filters, kernels, activ, bn, dr)
     x = add([x, inputs])
     x = Activation(activ)(x)
@@ -85,7 +85,7 @@ def res_network(inputs, units_num, filters, kernels, activ="relu", bn=False, dr=
 
 # model that combines several residual networks
 def parallel_res_network(
-    blocks_num, units_num, filters, kernels, activ="relu", bn=False, dr=0
+    blocks_num, units_num, filters, kernels, activ="relu", bn=False, dr=0.0
 ):
     inputs = Input(shape=(None, None, 1))
     all_outputs = []
@@ -111,6 +111,8 @@ def setup_model(weights: Path):
     tf_session_config = tf.compat.v1.ConfigProto(
         intra_op_parallelism_threads=1, inter_op_parallelism_threads=1
     )
+    tf_session_config.gpu_options.allow_growth = True
+
     tf_session = tf.compat.v1.Session(
         graph=tf.compat.v1.get_default_graph(), config=tf_session_config
     )

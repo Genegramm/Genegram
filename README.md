@@ -43,7 +43,7 @@ GGCUCUCAGUGAGCC
 
 ### OS
 
-* [`Ubuntu 20.04`](https://releases.ubuntu.com/20.04/) or later
+* [`Ubuntu 18.04`](https://releases.ubuntu.com/18.04/)
 
 ### Software
 
@@ -58,14 +58,13 @@ GGCUCUCAGUGAGCC
 tensorflow==2.7.0
 pygraphblas==4.2.2
 pyformlang==0.1.26
-pillow==8.4.0
 ```
 
 ## Installation
 
-### Package
+### From PyPI
 
-We recommend that you use a virtual environment because Genegram has a strict requirements policy
+To install **Gengram** from PyPI following commands can be used in terminal:
 
 1. `virtualenv -p python3.8 venv`
 2. `source ./venv/bin/activate`
@@ -73,20 +72,27 @@ We recommend that you use a virtual environment because Genegram has a strict re
 
 ### From sources
 
-We recommend that you use a virtual environment because Genegram has a strict requirements policy
+To install **Gengram** from sources following commands can be used in terminal:
 
 1. `git clone https://github.com/JetBrains-Research/Genegram.git`
 2. `cd Genegram`
-3. `virtualenv -p python3.8 venv`
-4. `source ./venv/bin/activate`
-5. `pip install .`
+
+Either follow `virtualenv` column steps or `conda` column steps to create virtual environment
+and to install **Genegram** dependencies given in table below:
+
+|  | virtualenv                                                                                                                                             | conda                                                                                                                                                                                                  |
+| --- |--------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 3. | `virtualenv -p python3.8 venv`                                                                                                                         | `conda create -n venv python=3.8`                                                                                                                                                                      |
+| 4. | `source ./venv/bin/activate`                                                                                                                           | `conda activate venv`                                                                                                                                                                                  |
+| 5. | To run Genegram on **CPU:** <br> `pip install tensorflow-cpu==2.7.0` <br> or <br> To run Genegram on **GPU:** <br> `pip install tensorflow-gpu==2.7.0` | To run Genegram on **CPU:** <br> `conda install tensorflow-cpu==2.7.0 --channel conda-forge` <br> or <br> To run Genegram on **GPU:** <br> `conda install tensorflow-gpu==2.7.0 --channel conda-forge` |
+| 6. | `pip install .` | `pip install .` |
 
 ## Usage
 
 After successfully installing the package, you have three options to use it:
 
 1. `python -m genegram <arguments>`
-2. `genegram arguments`
+2. `genegram <arguments>`
 3. ```Python
    from genegram import process_fasta_group
    process_fasta_group(<arguments>)
